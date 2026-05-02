@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm add *)",
+      "Bash(pnpm remove *)",
+      "Bash(xargs cat *)",
+      "Bash(pnpm expo *)"
+    ]
+  }
+}

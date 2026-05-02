@@ -1,5 +1,4 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { MINT_TO_TOKEN } from '@/lib/tokens';
 
 export interface TokenBalance {
@@ -13,6 +12,14 @@ export async function fetchBalances(
   publicKey: PublicKey,
   connection: Connection,
 ): Promise<TokenBalance[]> {
+  // Lazy import: @solana/spl-token → @solana/spl-token-metadata uses `Buffer`
+  // as a global at module init time. If imported at the top of this file it
+  // would be evaluated before Expo Router finishes loading _layout.tsx (which
+  // sets up the Buffer polyfill), crashing on `Property 'Buffer' doesn't exist`.
+  // Deferring the import to the first function call guarantees the polyfill is
+  // already in place.
+  const { TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
+
   const results: TokenBalance[] = [];
 
   const [lamports, tokenAccounts] = await Promise.all([
@@ -37,7 +44,7 @@ export async function fetchBalances(
     if (!info?.mint) continue;
 
     const tokenDef = MINT_TO_TOKEN[info.mint];
-    if (!tokenDef) continue; // skip tokens not in our registry
+    if (!tokenDef) continue;
 
     const amount = info.tokenAmount?.uiAmount ?? 0;
     if (amount <= 0) continue;
@@ -55,12 +62,9 @@ export async function fetchBalances(
 
 export function formatBalance(balance: number, decimals: number): string {
   if (balance === 0) return '0';
-  if (decimals <= 2) return balance.toLocaleString('en-US');
-  // Show at most 4 sig figs
+  if (balance >= 1_000_000) return (balance / 1_000_000).toFixed(1) + 'M';
   if (balance >= 1000) return balance.toLocaleString('en-US', { maximumFractionDigits: 0 });
   if (balance >= 1) return balance.toFixed(2);
   if (balance >= 0.001) return balance.toFixed(4);
-  // Very small amounts (like BONK in large quantity)
-  if (balance >= 1_000_000) return (balance / 1_000_000).toFixed(1) + 'M';
   return balance.toPrecision(3);
 }

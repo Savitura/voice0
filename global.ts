@@ -2,7 +2,7 @@ import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 import { Buffer } from '@craftzdog/react-native-buffer';
 
-if (typeof globalThis.Buffer === 'undefined') {
-  // @ts-expect-error — RN Buffer is compatible for our use but types differ slightly
-  globalThis.Buffer = Buffer;
-}
+// Set unconditionally — don't guard with typeof check.
+// Some Hermes builds see the property as absent even after a previous assignment.
+// @ts-expect-error — RN Buffer is compatible but types differ slightly
+global.Buffer = Buffer;

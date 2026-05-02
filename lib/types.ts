@@ -26,8 +26,11 @@ export interface SolanaTxBundle {
   steps: SolanaTxStep[];
   simulationPassed: boolean;
   estimatedFeeLamports: number;
+  computeUnits?: number;
   warnings: string[];
 }
+
+export type StepExecStatus = 'pending' | 'signing' | 'sending' | 'confirmed' | 'failed';
 
 export type AppPhase =
   | 'idle'

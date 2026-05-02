@@ -3,11 +3,14 @@ import type { SolanaTxStep, SwapParams, TransferParams } from '@/lib/types';
 import { MINT_TO_TOKEN } from '@/lib/tokens';
 import { formatUsd } from '@/lib/prices';
 
+type StepStatus = 'pending' | 'ok' | 'failed' | 'executing';
+
 interface StepCardProps {
   step: SolanaTxStep;
   index: number;
   prices?: Record<string, number>;
   executed?: boolean;
+  status?: StepStatus;
 }
 
 function getTokenSymbol(mint: string): string {
@@ -28,15 +31,24 @@ function UsdBadge({ amount, mint, prices }: { amount: number; mint: string; pric
   );
 }
 
-export function StepCard({ step, index, prices, executed = false }: StepCardProps) {
+const STATUS_DOT: Record<StepStatus, string> = {
+  pending: '#334155',
+  ok: '#22c55e',
+  failed: '#ef4444',
+  executing: '#f59e0b',
+};
+
+export function StepCard({ step, index, prices, executed = false, status = 'pending' }: StepCardProps) {
   const isSwap = step.type === 'swap';
   const isTransfer = step.type === 'transfer';
+  const dotColor = STATUS_DOT[executed ? 'ok' : status];
 
   return (
     <View style={[styles.card, executed && styles.cardExecuted]}>
       <View style={styles.header}>
+        <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{index + 1}</Text>
+          <Text style={styles.badgeText}>{String(index + 1).padStart(2, '0')}</Text>
         </View>
         <View style={styles.typeTag}>
           <Text style={styles.typeText}>{step.type.toUpperCase()}</Text>
@@ -122,6 +134,12 @@ export function StepCard({ step, index, prices, executed = false }: StepCardProp
 }
 
 const styles = StyleSheet.create({
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 2,
+  },
   card: {
     backgroundColor: '#1a1a2e',
     borderRadius: 12,

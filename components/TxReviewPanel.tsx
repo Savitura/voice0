@@ -3,224 +3,311 @@ import {
   Text,
   ScrollView,
   Pressable,
-  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SolanaTxBundle } from '@/lib/types';
 import { StepCard } from '@/components/StepCard';
 
 interface TxReviewPanelProps {
   bundle: SolanaTxBundle;
   prices?: Record<string, number>;
+  transcript: string;
   onConfirm: () => void;
-  onCancel: () => void;
-  isExecuting: boolean;
+  onDismiss: () => void;
+  onEditIntent: () => void;
 }
 
 function formatLamports(lamports: number): string {
   const sol = lamports / 1e9;
-  if (sol < 0.001) return `${lamports} lamports`;
-  return `~${sol.toFixed(5)} SOL`;
+  return sol < 0.0001 ? `${lamports} lamports` : `~${sol.toFixed(5)} SOL`;
 }
 
 export function TxReviewPanel({
   bundle,
   prices,
+  transcript,
   onConfirm,
-  onCancel,
-  isExecuting,
+  onDismiss,
+  onEditIntent,
 }: TxReviewPanelProps) {
   const hasWarnings = bundle.warnings.length > 0;
-  const canExecute = bundle.steps.some((s) => s.transaction != null);
+  const canExecute = bundle.simulationPassed && bundle.steps.some((s) => s.transaction != null);
 
   return (
-    <View style={styles.panel}>
-      <View style={styles.handle} />
+    <SafeAreaView style={styles.root}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Review Transaction</Text>
+        <Pressable style={styles.closeBtn} onPress={onDismiss} hitSlop={12}>
+          <Text style={styles.closeIcon}>✕</Text>
+        </Pressable>
+      </View>
 
-      <Text style={styles.intentLabel}>Parsed intent</Text>
-      <Text style={styles.intentText}>"{bundle.intent}"</Text>
+      {/* ── Transcript quote ── */}
+      <View style={styles.quoteBlock}>
+        <Text style={styles.quoteText}>"{transcript}"</Text>
+      </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionLabel}>
-          {bundle.steps.length} step{bundle.steps.length !== 1 ? 's' : ''}
-        </Text>
-
+      {/* ── Scrollable body ── */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Step cards */}
         {bundle.steps.map((step, i) => (
-          <StepCard key={step.id} step={step} index={i} prices={prices} />
+          <View key={step.id}>
+            <StepCard
+              step={step}
+              index={i}
+              prices={prices}
+              status={bundle.simulationPassed ? 'ok' : 'pending'}
+            />
+            {/* Connector between steps */}
+            {i < bundle.steps.length - 1 && <View style={styles.connector} />}
+          </View>
         ))}
 
+        {/* Simulation result block */}
+        <View style={styles.simBlock}>
+          <View style={styles.simRow}>
+            <Text style={styles.simLabel}>Simulation</Text>
+            <Text style={[styles.simValue, bundle.simulationPassed ? styles.simOk : styles.simFail]}>
+              {bundle.simulationPassed ? '✓ Passed' : '✗ Failed'}
+            </Text>
+          </View>
+          <View style={styles.simRow}>
+            <Text style={styles.simLabel}>Estimated fee</Text>
+            <Text style={styles.simValue}>{formatLamports(bundle.estimatedFeeLamports)}</Text>
+          </View>
+          {bundle.computeUnits != null && (
+            <View style={styles.simRow}>
+              <Text style={styles.simLabel}>Compute units</Text>
+              <Text style={styles.simValue}>{bundle.computeUnits.toLocaleString()}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Simulation failed warning */}
+        {!bundle.simulationPassed && (
+          <View style={styles.simFailCard}>
+            <Text style={styles.simFailTitle}>⚠ Simulation failed</Text>
+            <Text style={styles.simFailBody}>
+              This transaction could not be simulated. Execution is disabled until the intent is
+              corrected.
+            </Text>
+          </View>
+        )}
+
+        {/* Warnings */}
         {hasWarnings && (
-          <View style={styles.warningsBox}>
+          <View style={styles.warningsCard}>
             <Text style={styles.warningsTitle}>⚠ Warnings</Text>
             {bundle.warnings.map((w, i) => (
-              <Text key={i} style={styles.warningItem}>
-                • {w}
-              </Text>
+              <Text key={i} style={styles.warningItem}>• {w}</Text>
             ))}
           </View>
         )}
 
-        <View style={styles.feeRow}>
-          <Text style={styles.feeLabel}>Estimated fee</Text>
-          <Text style={styles.feeValue}>
-            {formatLamports(bundle.estimatedFeeLamports)}
-          </Text>
-        </View>
-
-        {!bundle.simulationPassed && (
-          <Text style={styles.simFailed}>
-            ⚠ Simulation did not pass — review warnings before confirming
-          </Text>
-        )}
+        <View style={styles.scrollPad} />
       </ScrollView>
 
-      <View style={styles.actions}>
-        <Pressable
-          style={[styles.btn, styles.cancelBtn]}
-          onPress={onCancel}
-          disabled={isExecuting}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
+      {/* ── Sticky footer ── */}
+      <View style={styles.footer}>
+        <Pressable style={styles.editBtn} onPress={onEditIntent}>
+          <Text style={styles.editBtnText}>Edit Intent</Text>
         </Pressable>
-
         <Pressable
-          style={[
-            styles.btn,
-            styles.confirmBtn,
-            (!canExecute || isExecuting) && styles.btnDisabled,
-          ]}
-          onPress={onConfirm}
-          disabled={!canExecute || isExecuting}
+          style={[styles.execBtn, !canExecute && styles.execBtnDisabled]}
+          onPress={canExecute ? onConfirm : undefined}
         >
-          {isExecuting ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.confirmText}>
-              {bundle.simulationPassed ? 'Confirm & Execute' : 'Execute Anyway'}
-            </Text>
-          )}
+          <Text style={styles.execBtnText}>Execute</Text>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: {
-    backgroundColor: '#0f0f23',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
+  root: {
+    flex: 1,
+    backgroundColor: '#080818',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 32,
-    maxHeight: '80%',
-    borderTopWidth: 1,
-    borderColor: '#1e1e3a',
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0f172a',
   },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#334155',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  intentLabel: {
-    color: '#64748b',
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  intentText: {
+  title: {
     color: '#e2e8f0',
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeIcon: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quoteBlock: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#0c1221',
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#0369a1',
+  },
+  quoteText: {
+    color: '#94a3b8',
+    fontSize: 14,
     fontStyle: 'italic',
-    marginBottom: 20,
+    lineHeight: 20,
   },
   scroll: {
     flex: 1,
   },
-  sectionLabel: {
-    color: '#64748b',
-    fontSize: 12,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
-  warningsBox: {
-    backgroundColor: '#1c1508',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+  connector: {
+    width: 2,
+    height: 16,
+    backgroundColor: '#1e293b',
+    alignSelf: 'center',
+    marginVertical: -4,
+    zIndex: 1,
+  },
+  simBlock: {
+    marginTop: 16,
+    backgroundColor: '#0c1221',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0f1a2e',
+    overflow: 'hidden',
+  },
+  simRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0f172a',
+  },
+  simLabel: {
+    color: '#64748b',
+    fontSize: 13,
+  },
+  simValue: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  simOk: {
+    color: '#22c55e',
+  },
+  simFail: {
+    color: '#f87171',
+  },
+  simFailCard: {
+    marginTop: 12,
+    backgroundColor: '#1a0a0a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#7f1d1d',
+    padding: 14,
+    gap: 6,
+  },
+  simFailTitle: {
+    color: '#f87171',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  simFailBody: {
+    color: '#9a3333',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  warningsCard: {
+    marginTop: 12,
+    backgroundColor: '#141005',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#78350f',
+    padding: 14,
+    gap: 6,
   },
   warningsTitle: {
     color: '#f59e0b',
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: 6,
   },
   warningItem: {
-    color: '#d97706',
+    color: '#92400e',
     fontSize: 12,
     lineHeight: 18,
   },
-  feeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderColor: '#1e293b',
-    marginBottom: 8,
+  scrollPad: {
+    height: 24,
   },
-  feeLabel: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  feeValue: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  simFailed: {
-    color: '#f59e0b',
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  actions: {
+  footer: {
     flexDirection: 'row',
     gap: 12,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#0f172a',
+    backgroundColor: '#080818',
   },
-  btn: {
-    flex: 1,
-    height: 52,
-    borderRadius: 12,
+  editBtn: {
+    flex: 0,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelBtn: {
-    backgroundColor: '#1e293b',
-    flex: 0.4,
-  },
-  confirmBtn: {
-    backgroundColor: '#0a7ea4',
-  },
-  btnDisabled: {
-    opacity: 0.4,
-  },
-  cancelText: {
-    color: '#94a3b8',
-    fontSize: 16,
+  editBtnText: {
+    color: '#64748b',
+    fontSize: 14,
     fontWeight: '500',
   },
-  confirmText: {
+  execBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#0369a1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  execBtnDisabled: {
+    backgroundColor: '#0c1a2e',
+    opacity: 0.5,
+  },
+  execBtnText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
