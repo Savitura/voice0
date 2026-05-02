@@ -14,11 +14,11 @@ import { z } from 'zod';
 import { simulateTx, estimateFee } from '@/lib/solana';
 import { quoteAndBuild } from '@/lib/jupiter';
 import { TOKENS, getSymbolFromMint } from '@/lib/tokens';
+import { getRpcUrl } from '@/lib/network';
 import type { SolanaTxBundle, SolanaTxStep, SwapParams, TransferParams } from '@/lib/types';
 
-function getServerConnection(): Connection {
-  const rpcUrl = process.env.HELIUS_RPC_URL;
-  if (!rpcUrl) throw new Error('HELIUS_RPC_URL is not set');
+function getServerConnection(cluster: 'mainnet-beta' | 'devnet' = 'mainnet-beta'): Connection {
+  const rpcUrl = getRpcUrl(cluster);
   return new Connection(rpcUrl, 'confirmed');
 }
 
@@ -66,6 +66,7 @@ const RequestSchema = z.object({
     warnings: z.array(z.string()),
   }),
   userPublicKey: z.string(),
+  cluster: z.enum(['mainnet-beta', 'devnet']).optional().default('mainnet-beta'),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -76,9 +77,9 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const { bundle, userPublicKey } = parsed.data;
+    const { bundle, userPublicKey, cluster } = parsed.data;
     const pubkey = new PublicKey(userPublicKey);
-    const connection = getServerConnection();
+    const connection = getServerConnection(cluster);
 
     let totalFeeLamports = 0;
     const enrichedSteps: SolanaTxStep[] = [];
@@ -100,7 +101,7 @@ export async function POST(request: Request): Promise<Response> {
           userPublicKey,
         );
 
-        const simResult = await simulateTx(txBase64);
+        const simResult = await simulateTx(txBase64, connection);
         if (!simResult.success) {
           warnings.push(
             `Simulation failed for "${step.humanSummary}": ${simResult.error}`,
@@ -113,7 +114,7 @@ export async function POST(request: Request): Promise<Response> {
         const p = step.params as TransferParams;
         const txBase64 = await buildTransferTx(p, pubkey, connection);
 
-        const simResult = await simulateTx(txBase64);
+        const simResult = await simulateTx(txBase64, connection);
         if (!simResult.success) {
           warnings.push(
             `Simulation failed for "${step.humanSummary}": ${simResult.error}`,

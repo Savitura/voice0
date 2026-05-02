@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,17 @@ import {
 } from 'react-native';
 import { VoiceButton } from '@/components/VoiceButton';
 import { TxReviewPanel } from '@/components/TxReviewPanel';
+import { NetworkToggle } from '@/components/NetworkToggle';
+import { BalanceStrip } from '@/components/BalanceStrip';
 import { startRecording, stopRecording, transcribeAudio } from '@/lib/elevenlabs';
-import { signAndSendTransactions, connectWallet, getCachedSession } from '@/lib/wallet';
+import { signAndSendTransactions, connectWallet, getCachedSession, clearSession } from '@/lib/wallet';
+import { getCluster, setCluster, type Cluster } from '@/lib/network';
+import { getConnection } from '@/lib/solana';
+import { fetchBalances, type TokenBalance } from '@/lib/balances';
+import { fetchPrices, mintsFromBundle } from '@/lib/prices';
 import type { AppPhase, AppError, SolanaTxBundle } from '@/lib/types';
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_BASE_URL ?? 'http://localhost:8081';
+const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? 'http://localhost:8081';
 
 async function parseIntent(text: string): Promise<SolanaTxBundle> {
   const res = await fetch(`${BASE_URL}/api/parse-intent`, {
@@ -31,11 +36,12 @@ async function parseIntent(text: string): Promise<SolanaTxBundle> {
 async function simulateBundle(
   bundle: SolanaTxBundle,
   userPublicKey: string,
+  cluster: Cluster,
 ): Promise<SolanaTxBundle> {
   const res = await fetch(`${BASE_URL}/api/simulate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bundle, userPublicKey }),
+    body: JSON.stringify({ bundle, userPublicKey, cluster }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Simulate failed');
@@ -43,11 +49,31 @@ async function simulateBundle(
 }
 
 export default function HomeScreen() {
+  const [cluster, setClusterState] = useState<Cluster>(getCluster());
   const [phase, setPhase] = useState<AppPhase>('idle');
   const [error, setError] = useState<AppError | null>(null);
-  const [transcript, setTranscript] = useState<string>('');
+  const [transcript, setTranscript] = useState('');
   const [bundle, setBundle] = useState<SolanaTxBundle | null>(null);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<TokenBalance[]>([]);
   const [signatures, setSignatures] = useState<string[]>([]);
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  const refreshBalances = useCallback(async () => {
+    const session = getCachedSession();
+    if (!session) return;
+    try {
+      const conn = getConnection();
+      const bals = await fetchBalances(session.publicKey, conn);
+      setBalances(bals);
+      // Fetch prices for all balance mints
+      const mints = bals.map((b) => b.mint);
+      const p = await fetchPrices(mints);
+      setPrices((prev) => ({ ...prev, ...p }));
+    } catch {
+      // Silently fail — balances are non-critical
+    }
+  }, []);
 
   const resetToIdle = useCallback(() => {
     setPhase('idle');
@@ -55,7 +81,19 @@ export default function HomeScreen() {
     setTranscript('');
     setBundle(null);
     setSignatures([]);
+    setIsExecuting(false);
   }, []);
+
+  const handleNetworkChange = useCallback(
+    (newCluster: Cluster) => {
+      setCluster(newCluster);
+      setClusterState(newCluster);
+      clearSession();
+      setBalances([]);
+      resetToIdle();
+    },
+    [resetToIdle],
+  );
 
   const handlePressIn = useCallback(() => {
     if (phase !== 'idle') return;
@@ -78,10 +116,17 @@ export default function HomeScreen() {
       const text = await transcribeAudio(uri);
       setTranscript(text);
 
-      // Ensure we have a wallet session before simulating
       let session = getCachedSession();
       if (!session && Platform.OS === 'android') {
         session = await connectWallet();
+        // Fetch balances after first wallet connect
+        if (session) {
+          const conn = getConnection();
+          const bals = await fetchBalances(session.publicKey, conn);
+          setBalances(bals);
+          const mints = bals.map((b) => b.mint);
+          fetchPrices(mints).then((p) => setPrices((prev) => ({ ...prev, ...p })));
+        }
       }
       const pubkey = session?.publicKey.toBase58() ?? '';
 
@@ -90,8 +135,18 @@ export default function HomeScreen() {
 
       setPhase('simulating');
       const simulated = pubkey
-        ? await simulateBundle(parsed, pubkey)
-        : { ...parsed, warnings: [...parsed.warnings, 'No wallet connected — simulation skipped'] };
+        ? await simulateBundle(parsed, pubkey, cluster)
+        : {
+            ...parsed,
+            warnings: [
+              ...parsed.warnings,
+              'No wallet connected — simulation skipped',
+            ],
+          };
+
+      // Fetch prices for the bundle's tokens in parallel
+      const bundleMints = mintsFromBundle(simulated.steps);
+      fetchPrices(bundleMints).then((p) => setPrices((prev) => ({ ...prev, ...p })));
 
       setBundle(simulated);
       setPhase('reviewing');
@@ -102,7 +157,7 @@ export default function HomeScreen() {
       });
       setPhase('error');
     }
-  }, [phase]);
+  }, [phase, cluster]);
 
   const handleConfirm = useCallback(async () => {
     if (!bundle) return;
@@ -117,21 +172,22 @@ export default function HomeScreen() {
     }
 
     if (Platform.OS !== 'android') {
-      Alert.alert(
-        'Android only',
-        'Mobile Wallet Adapter is only supported on Android.',
-      );
+      Alert.alert('Android only', 'Mobile Wallet Adapter is only supported on Android.');
       return;
     }
 
     try {
+      setIsExecuting(true);
       setPhase('executing');
       const sigs = await signAndSendTransactions(txBase64s);
       setSignatures(sigs);
       setPhase('done');
+      // Refresh balances after execution
+      refreshBalances();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Execution failed';
-      const isUserRejection = msg.toLowerCase().includes('cancelled') ||
+      const isUserRejection =
+        msg.toLowerCase().includes('cancelled') ||
         msg.toLowerCase().includes('rejected');
 
       if (isUserRejection) {
@@ -140,20 +196,30 @@ export default function HomeScreen() {
         setError({ phase: 'executing', message: msg });
         setPhase('error');
       }
+    } finally {
+      setIsExecuting(false);
     }
-  }, [bundle]);
+  }, [bundle, refreshBalances]);
 
-  const handleCancel = useCallback(() => {
-    resetToIdle();
-  }, [resetToIdle]);
+  const handleCancel = useCallback(() => resetToIdle(), [resetToIdle]);
 
   return (
     <SafeAreaView style={styles.root}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>voice0</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>voice0</Text>
+          <NetworkToggle cluster={cluster} onChange={handleNetworkChange} />
+        </View>
         <Text style={styles.subtitle}>Speak your DeFi intent</Text>
       </View>
 
+      {/* Balance strip — visible when wallet is connected */}
+      {balances.length > 0 && (
+        <BalanceStrip balances={balances} prices={prices} />
+      )}
+
+      {/* Main content */}
       {phase !== 'reviewing' && (
         <View style={styles.center}>
           <VoiceButton
@@ -197,14 +263,16 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {/* Transaction review panel */}
       {phase === 'reviewing' && bundle && (
         <View style={styles.reviewContainer}>
           <ScrollView contentContainerStyle={styles.reviewScroll}>
             <TxReviewPanel
               bundle={bundle}
+              prices={prices}
               onConfirm={handleConfirm}
               onCancel={handleCancel}
-              isExecuting={false}
+              isExecuting={isExecuting}
             />
           </ScrollView>
         </View>
@@ -227,7 +295,12 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 24,
     paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingBottom: 12,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   title: {
     color: '#e2e8f0',
