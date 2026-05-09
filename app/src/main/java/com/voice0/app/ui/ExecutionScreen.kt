@@ -1,13 +1,14 @@
 package com.voice0.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -21,98 +22,73 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.voice0.app.ui.theme.Accent
-import com.voice0.app.ui.theme.AccentLight
 import com.voice0.app.ui.theme.Bg
-import com.voice0.app.ui.theme.Outline
+import com.voice0.app.ui.theme.LightBg
+import com.voice0.app.ui.theme.LightSurface
+import com.voice0.app.ui.theme.LightTextMuted
+import com.voice0.app.ui.theme.LightTextPrimary
+import com.voice0.app.ui.theme.LightTextSecondary
 import com.voice0.app.ui.theme.SurfaceHigh
-import com.voice0.app.ui.theme.SurfaceLow
 import com.voice0.app.ui.theme.TextMuted
 import com.voice0.app.ui.theme.TextPrimary
-import com.voice0.app.ui.theme.TextSecondary
 import com.voice0.app.viewmodel.HomeViewModel
 
 @Composable
 fun ExecutionScreen(state: HomeViewModel.UiState) {
     val bundle = state.bundle
+
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Bg)
-            .systemBarsPadding()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize().background(LightBg).systemBarsPadding(),
     ) {
-        Box(
-            modifier = Modifier.size(80.dp),
-            contentAlignment = Alignment.Center,
+        // Dark top
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                .background(Bg)
+                .padding(horizontal = 32.dp, vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            CircularProgressIndicator(
-                color = Accent,
-                trackColor = Accent.copy(alpha = 0.10f),
-                modifier = Modifier.size(80.dp),
-                strokeWidth = 3.dp,
-            )
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(SurfaceHigh)
-                    .border(1.dp, Outline, RoundedCornerShape(18.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("✍", fontSize = 22.sp)
+            Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    color = TextPrimary,
+                    trackColor = TextPrimary.copy(alpha = 0.10f),
+                    modifier = Modifier.size(80.dp),
+                    strokeWidth = 3.dp,
+                )
+                Box(
+                    Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(SurfaceHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("✍", fontSize = 22.sp)
+                }
             }
+            Spacer(Modifier.height(24.dp))
+            Text("Signing & sending", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Text("Waiting for wallet approval…", color = TextMuted, fontSize = 14.sp)
         }
 
-        Box(Modifier.size(28.dp))
-
-        Text(
-            "Signing & sending",
-            color = TextPrimary,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.3).sp,
-        )
-
-        Box(Modifier.size(6.dp))
-
-        Text(
-            "Waiting for wallet approval…",
-            color = TextMuted,
-            fontSize = 13.sp,
-        )
-
+        // Light bottom with steps
         if (bundle != null && bundle.steps.isNotEmpty()) {
-            Box(Modifier.size(28.dp))
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Text("Steps", color = LightTextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
                 bundle.steps.forEachIndexed { idx, step ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceLow)
-                            .border(1.dp, Outline, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(LightSurface)
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text(
-                            "${idx + 1}",
-                            color = AccentLight,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            step.humanSummary,
-                            color = TextSecondary,
-                            fontSize = 13.sp,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Text("${idx + 1}", color = LightTextMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(step.humanSummary, color = LightTextSecondary, fontSize = 14.sp, modifier = Modifier.weight(1f))
                     }
                 }
             }

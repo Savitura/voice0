@@ -15,6 +15,8 @@ import com.voice0.app.data.StepType
 import com.voice0.app.data.SwapParams
 import com.voice0.app.data.TokenBalance
 import com.voice0.app.data.TransferParams
+import com.voice0.app.data.TxHistoryRepository
+import com.voice0.app.data.TxRecord
 import com.voice0.app.network.ElevenLabsClient
 import com.voice0.app.network.HeliusRpc
 import com.voice0.app.network.PriceClient
@@ -28,9 +30,12 @@ import com.voice0.app.wallet.WalletUserCancelled
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import java.util.UUID
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -45,6 +50,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         val walletPubkeyBase58: String? = null,
         val error: AppError? = null,
         val recordingMillis: Long = 0,
+        val history: List<TxRecord> = emptyList(),
     )
 
     private val _state = MutableStateFlow(UiState())
@@ -54,6 +60,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val wallet = WalletManager(app)
     private val parser = IntentParser()
     private val json = Json { ignoreUnknownKeys = true }
+    private val txHistory = TxHistoryRepository(app)
+
+    init {
+        txHistory.records.onEach { records ->
+            _state.update { it.copy(history = records) }
+        }.launchIn(viewModelScope)
+        // Restore wallet pubkey from encrypted prefs so the user doesn't have to
+        // re-approve the wallet on every app launch.
+        val cached = wallet.cachedPublicKey(_state.value.cluster)
+        if (cached != null) {
+            _state.update { it.copy(walletPubkeyBase58 = cached) }
+            viewModelScope.launch { refreshBalancesAndPrices(cached) }
+        }
+    }
 
     private fun rpc() = HeliusRpc(_state.value.cluster)
     private fun txBuilder() = TxBuilder(rpc())
@@ -62,8 +82,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (_state.value.phase != AppPhase.IDLE && _state.value.phase != AppPhase.REVIEWING &&
             _state.value.phase != AppPhase.DONE && _state.value.phase != AppPhase.ERROR
         ) return
-        _state.update { it.copy(cluster = c, balances = emptyList(), walletPubkeyBase58 = null) }
-        wallet.clearSession(c)
+        // Restore cached pubkey for the target cluster — don't wipe an existing session
+        val cached = wallet.cachedPublicKey(c)
+        _state.update {
+            it.copy(
+                cluster = c,
+                balances = emptyList(),
+                walletPubkeyBase58 = cached,
+            )
+        }
+        if (cached != null) {
+            viewModelScope.launch { refreshBalancesAndPrices(cached) }
+        }
     }
 
     fun startRecording() {
@@ -151,6 +181,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 val sigs = wallet.signAndSend(sender, _state.value.cluster, txs)
                 _state.update { it.copy(phase = AppPhase.DONE, signatures = sigs) }
                 refreshBalancesAndPrices(pubkey)
+                val b = _state.value.bundle
+                if (b != null && sigs.isNotEmpty()) {
+                    txHistory.add(
+                        TxRecord(
+                            id = UUID.randomUUID().toString(),
+                            timestampMs = System.currentTimeMillis(),
+                            cluster = _state.value.cluster.name,
+                            intent = b.intent,
+                            steps = b.steps.map { it.humanSummary },
+                            signatures = sigs,
+                        )
+                    )
+                }
             } catch (e: WalletUserCancelled) {
                 _state.update { it.copy(phase = AppPhase.REVIEWING) }
             } catch (e: Exception) {
@@ -186,6 +229,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 signatures = emptyList(),
             )
         }
+    }
+
+    fun showHistory() {
+        _state.update { it.copy(phase = AppPhase.HISTORY) }
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch { txHistory.clear() }
     }
 
     fun connectWallet(sender: ActivityResultSender) {

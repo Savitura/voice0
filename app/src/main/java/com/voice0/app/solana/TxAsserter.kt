@@ -129,11 +129,14 @@ object TxAsserter {
             val data = ByteArray(dataLen).also { buf.get(it) }
             val accounts = accountIdxs.map { idx ->
                 val isSigner = idx < numRequiredSignatures
-                // Writable heuristic: first (numRequiredSignatures - numReadonlySignedAccounts)
-                // are writable signers. We don't need full accuracy for assertions.
-                DecodedAccountMeta(accountKeys[idx], isSigner = isSigner, isWritable = false)
+                // V0 transactions can reference ALT-resolved accounts beyond the static
+                // accountKeys list. Use a zero-key placeholder for those — we only need
+                // static accounts for our fee-payer and program-id assertions.
+                val key = accountKeys.getOrElse(idx) { SolanaPublicKey(ByteArray(32)) }
+                DecodedAccountMeta(key, isSigner = isSigner, isWritable = false)
             }
-            ixs.add(DecodedInstruction(accountKeys[programIdIdx], accounts, data))
+            val programKey = accountKeys.getOrElse(programIdIdx) { SolanaPublicKey(ByteArray(32)) }
+            ixs.add(DecodedInstruction(programKey, accounts, data))
         }
 
         return DecodedTx(feePayer = accountKeys[0], instructions = ixs)

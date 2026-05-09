@@ -1,7 +1,6 @@
 package com.voice0.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,11 +18,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.voice0.app.data.TokenBalance
 import com.voice0.app.solana.Balances
-import com.voice0.app.ui.theme.Outline
-import com.voice0.app.ui.theme.Surface
-import com.voice0.app.ui.theme.TextMuted
-import com.voice0.app.ui.theme.TextPrimary
-import com.voice0.app.ui.theme.TextSecondary
+import com.voice0.app.ui.theme.LightSurface
+import com.voice0.app.ui.theme.LightTextMuted
+import com.voice0.app.ui.theme.LightTextPrimary
+import com.voice0.app.ui.theme.LightTextSecondary
 
 @Composable
 fun BalanceStrip(balances: List<TokenBalance>, prices: Map<String, Double>) {
@@ -39,31 +37,15 @@ fun BalanceStrip(balances: List<TokenBalance>, prices: Map<String, Double>) {
             val usd = prices[b.mint]?.let { it * b.balance }
             Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Surface)
-                    .border(1.dp, Outline, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(1.dp),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(LightSurface)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text(
-                    b.symbol,
-                    color = TextMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.3.sp,
-                )
-                Text(
-                    Balances.formatBalance(b.balance),
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Text(b.symbol, color = LightTextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text(Balances.formatBalance(b.balance), color = LightTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 if (usd != null) {
-                    Text(
-                        "$" + if (usd >= 1) "%.2f".format(usd) else "%.4f".format(usd),
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                    )
+                    Text("$" + if (usd >= 1) "%.2f".format(usd) else "%.4f".format(usd), color = LightTextSecondary, fontSize = 11.sp)
                 }
             }
         }

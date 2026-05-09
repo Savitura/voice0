@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.voice0.app.ui.theme.Outline
+import com.voice0.app.ui.theme.LightOutline
 
 @Composable
 fun AppDivider(modifier: Modifier = Modifier) {
@@ -15,6 +15,6 @@ fun AppDivider(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(Outline),
+            .background(LightOutline),
     )
 }

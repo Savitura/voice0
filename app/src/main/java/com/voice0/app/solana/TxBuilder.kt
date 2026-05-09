@@ -9,6 +9,7 @@ import com.solana.transaction.Transaction
 import com.solana.transaction.TransactionInstruction
 import com.voice0.app.data.Amount
 import com.voice0.app.data.SwapParams
+import com.voice0.app.data.Tokens
 import com.voice0.app.data.TransferParams
 import com.voice0.app.network.HeliusRpc
 import com.voice0.app.network.JupiterClient
@@ -77,16 +78,18 @@ class TxBuilder(
         params: SwapParams,
         payer: SolanaPublicKey,
     ): Pair<String, JupiterQuote> {
-        val decimals = if (params.inputMint == "native") 9 else rpc.getMintDecimals(params.inputMint)
+        val decimals = when {
+            params.inputMint == "native" -> 9
+            else -> Tokens.byMint(params.inputMint)?.decimals ?: rpc.getMintDecimals(params.inputMint)
+        }
         val amountBase = Amount.toBaseUnits(params.amount, decimals).toString()
 
-        val quote = JupiterClient.quote(
-            inputMint = params.inputMint,
-            outputMint = params.outputMint,
+        val (rawQuote, quote) = JupiterClient.quote(
+            inputMint = jupiterMint(params.inputMint),
+            outputMint = jupiterMint(params.outputMint),
             amountBaseUnits = amountBase,
             slippageBps = params.slippageBps,
         )
-        val rawQuote: JsonObject = jsonFmt.encodeToJsonElement(JupiterQuote.serializer(), quote) as JsonObject
         val txBase64 = JupiterClient.buildSwapTx(rawQuote, payer.base58())
         return txBase64 to quote
     }
@@ -150,3 +153,7 @@ object AssociatedTokenAccount {
 }
 
 private fun SolanaPublicKey.base58(): String = Base58.encodeToString(bytes)
+
+// Jupiter requires the wrapped-SOL mint; "native" is only used internally.
+private const val WRAPPED_SOL = "So11111111111111111111111111111111111111112"
+private fun jupiterMint(mint: String) = if (mint == "native") WRAPPED_SOL else mint

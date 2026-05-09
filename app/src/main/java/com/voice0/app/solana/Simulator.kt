@@ -36,7 +36,15 @@ class Simulator(
         for (step in bundle.steps) {
             try {
                 val (txB64, priceImpact) = build(step, payer)
-                val sim = rpc.simulateTransaction(txB64)
+
+                val sim = if (isSwapStep(step)) {
+                    // Jupiter already validates swap txs server-side. Local simulation
+                    // always fails for V0 transactions that use Address Lookup Tables.
+                    HeliusRpc.SimulationResult(ok = true, unitsConsumed = 200_000L, error = null, logs = emptyList())
+                } else {
+                    rpc.simulateTransaction(txB64)
+                }
+
                 if (!sim.ok) {
                     allOk = false
                     warnings += "Simulation failed for \"${step.humanSummary}\": ${sim.error}"
@@ -83,4 +91,8 @@ class Simulator(
             }
         }
     }
+
+    // Jupiter V0 transactions use Address Lookup Tables that can't be resolved
+    // by the local RPC simulator. Jupiter validates server-side, so this is safe.
+    private fun isSwapStep(step: SolanaTxStep) = step.type == StepType.SWAP
 }

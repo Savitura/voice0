@@ -1,31 +1,44 @@
 package com.voice0.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.voice0.app.data.TokenBalance
 import com.voice0.app.solana.Balances
-import com.voice0.app.ui.theme.Outline
-import com.voice0.app.ui.theme.Success
-import com.voice0.app.ui.theme.SurfaceHigh
-import com.voice0.app.ui.theme.TextMuted
-import com.voice0.app.ui.theme.TextPrimary
-import com.voice0.app.ui.theme.TextSecondary
+import com.voice0.app.ui.theme.TokenBONK
+import com.voice0.app.ui.theme.TokenDefault
+import com.voice0.app.ui.theme.TokenJUP
+import com.voice0.app.ui.theme.TokenSOL
+import com.voice0.app.ui.theme.TokenUSDC
+import com.voice0.app.ui.theme.TokenUSDT
 
+private fun tokenColor(symbol: String): Color = when (symbol.uppercase()) {
+    "SOL" -> TokenSOL
+    "USDC" -> TokenUSDC
+    "USDT" -> TokenUSDT
+    "BONK" -> TokenBONK
+    "JUP" -> TokenJUP
+    else -> TokenDefault
+}
+
+// Dark card matching the Aivora reference style (dark pills on light bg)
 @Composable
 fun TokenRow(
     b: TokenBalance,
@@ -33,44 +46,48 @@ fun TokenRow(
     modifier: Modifier = Modifier,
 ) {
     val usdValue = price?.let { it * b.balance }
+    val color = tokenColor(b.symbol)
+    val cardBg = Color(0xFF1C1C1E)
+    val textMain = Color.White
+    val textSub = Color(0xFFAEAEB2)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceHigh)
-            .border(1.dp, Outline, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBg)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(b.symbol, color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        // Colored symbol circle
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(b.symbol.take(1), color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(b.symbol, color = textMain, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             if (price != null) {
-                Text(
-                    "$${"%.4f".format(price)}",
-                    color = TextMuted,
-                    fontSize = 11.sp,
-                )
+                Text("$${"%.2f".format(price)}", color = textSub, fontSize = 13.sp)
             }
         }
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 Balances.formatBalance(b.balance),
-                color = TextSecondary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
+                color = textMain, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.End,
             )
             if (usdValue != null) {
                 Text(
-                    "$" + if (usdValue >= 1) "%.2f".format(usdValue) else "%.4f".format(usdValue),
-                    color = Success.copy(alpha = 0.85f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.End,
+                    "$" + if (usdValue >= 1) "%,.2f".format(usdValue) else "%.4f".format(usdValue),
+                    color = textSub, fontSize = 13.sp, textAlign = TextAlign.End,
                 )
             }
         }

@@ -39,6 +39,8 @@ class MainActivity : ComponentActivity() {
                     onSubmitText = { viewModel.submitTextIntent(resultSender, it) },
                     onConfirm = { viewModel.confirmAndSign(resultSender) },
                     onReset = viewModel::resetToIdle,
+                    onShowHistory = viewModel::showHistory,
+                    onClearHistory = viewModel::clearHistory,
                 )
             }
         }

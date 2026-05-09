@@ -24,19 +24,14 @@ import androidx.compose.ui.unit.sp
 import com.voice0.app.data.SolanaTxStep
 import com.voice0.app.data.StepType
 import com.voice0.app.data.Tokens
-import com.voice0.app.ui.theme.Accent
-import com.voice0.app.ui.theme.AccentLight
 import com.voice0.app.ui.theme.Danger
-import com.voice0.app.ui.theme.DangerDeep
-import com.voice0.app.ui.theme.Outline
-import com.voice0.app.ui.theme.OutlineLow
+import com.voice0.app.ui.theme.LightBg
+import com.voice0.app.ui.theme.LightOutline
+import com.voice0.app.ui.theme.LightSurface
+import com.voice0.app.ui.theme.LightTextMuted
+import com.voice0.app.ui.theme.LightTextPrimary
+import com.voice0.app.ui.theme.LightTextSecondary
 import com.voice0.app.ui.theme.Success
-import com.voice0.app.ui.theme.SuccessDeep
-import com.voice0.app.ui.theme.Surface
-import com.voice0.app.ui.theme.SurfaceHigh
-import com.voice0.app.ui.theme.TextMuted
-import com.voice0.app.ui.theme.TextPrimary
-import com.voice0.app.ui.theme.TextSecondary
 import com.voice0.app.ui.theme.Warning
 import com.voice0.app.ui.theme.WarningDeep
 import kotlinx.serialization.json.JsonElement
@@ -53,67 +48,34 @@ fun StepCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceHigh)
-            .border(1.dp, Outline, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(LightSurface)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                (index + 1).toString(),
-                color = TextMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            )
+            Text("${index + 1}", color = LightTextMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Surface)
-                    .border(1.dp, Outline, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(LightBg)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
             ) {
-                Text(
-                    step.type.name,
-                    color = AccentLight,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.8.sp,
-                )
+                Text(step.type.name, color = LightTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp)
             }
             Spacer(Modifier.weight(1f))
             if (simOk != null) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(if (simOk) Success else Danger),
-                )
-                Text(
-                    if (simOk) "Passed" else "Failed",
-                    color = if (simOk) Success else Danger,
-                    fontSize = 11.sp,
-                )
+                Box(Modifier.size(6.dp).clip(CircleShape).background(if (simOk) Success else Danger))
+                Text(if (simOk) "Passed" else "Failed", color = if (simOk) Success else Danger, fontSize = 11.sp)
             }
         }
 
-        Text(
-            step.humanSummary,
-            color = TextPrimary,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 15.sp,
-        )
+        Text(step.humanSummary, color = LightTextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(OutlineLow),
-        )
+        Box(Modifier.fillMaxWidth().height(1.dp).background(LightOutline))
 
         when (step.type) {
             StepType.SWAP -> SwapDetails(step.params, prices)
@@ -132,9 +94,9 @@ fun StepCard(
 private fun WarningTag(text: String) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(WarningDeep)
-            .border(1.dp, Warning.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+            .border(1.dp, Warning.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -153,7 +115,7 @@ private fun SwapDetails(params: kotlinx.serialization.json.JsonObject, prices: M
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ParamRow("From", "$amount ${Tokens.symbolFromMint(inputMint)}", usd(amount, inputMint, prices))
-        Text("↓", color = TextMuted, fontSize = 16.sp)
+        Text("↓", color = LightTextMuted, fontSize = 16.sp)
         ParamRow("To", Tokens.symbolFromMint(outputMint))
         ParamRow("Slippage", "${slip / 100.0}%")
     }
@@ -173,27 +135,18 @@ private fun TransferDetails(params: kotlinx.serialization.json.JsonObject, price
 
 @Composable
 private fun ParamRow(label: String, value: String, usd: String? = null) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, color = TextMuted, fontSize = 13.sp)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(value, color = TextSecondary, fontSize = 13.sp)
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Text(label, color = LightTextMuted, fontSize = 13.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(value, color = LightTextSecondary, fontSize = 13.sp)
             if (usd != null) Text(usd, color = Success, fontSize = 12.sp)
         }
     }
 }
 
-private fun truncate(s: String): String =
-    if (s.length <= 12) s else "${s.take(6)}…${s.takeLast(4)}"
+private fun truncate(s: String): String = if (s.length <= 12) s else "${s.take(6)}…${s.takeLast(4)}"
 
-private fun JsonElement.string(): String =
-    runCatching { jsonPrimitive.content }.getOrDefault("")
+private fun JsonElement.string(): String = runCatching { jsonPrimitive.content }.getOrDefault("")
 
 private fun usd(amount: Double, mint: String, prices: Map<String, Double>): String? {
     val p = prices[mint] ?: return null

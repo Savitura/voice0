@@ -12,6 +12,7 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 @Serializable
 data class JupiterQuote(
@@ -43,14 +44,17 @@ object JupiterClient {
     private const val SWAP_URL = "https://api.jup.ag/swap/v1/swap"
 
     /**
-     * @param amountBaseUnits the input amount expressed in the inputMint's base units
+     * Returns the raw quote JsonObject (passed verbatim to /swap) and the
+     * parsed JupiterQuote (used for display / price-impact checks).
+     * Keeping the raw response avoids re-encoding a stripped object back to Jupiter,
+     * which caused malformed transactions.
      */
     suspend fun quote(
         inputMint: String,
         outputMint: String,
         amountBaseUnits: String,
         slippageBps: Int,
-    ): JupiterQuote {
+    ): Pair<JsonObject, JupiterQuote> {
         val response = Net.client.get(QUOTE_URL) {
             parameter("inputMint", inputMint)
             parameter("outputMint", outputMint)
@@ -61,7 +65,9 @@ object JupiterClient {
         if (!response.status.isSuccess()) {
             error("Jupiter quote ${response.status.value}: ${response.bodyAsText()}")
         }
-        return response.body()
+        val raw: JsonObject = response.body<JsonElement>().jsonObject
+        val parsed: JupiterQuote = Net.json.decodeFromJsonElement(JupiterQuote.serializer(), raw)
+        return raw to parsed
     }
 
     /** Returns base64-encoded VersionedTransaction bytes from Jupiter. */

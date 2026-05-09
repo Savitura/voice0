@@ -3,12 +3,12 @@ package com.voice0.app.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,18 +32,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.voice0.app.data.Cluster
-import com.voice0.app.ui.theme.Accent
-import com.voice0.app.ui.theme.AccentLight
 import com.voice0.app.ui.theme.Bg
-import com.voice0.app.ui.theme.Outline
-import com.voice0.app.ui.theme.OutlineLow
+import com.voice0.app.ui.theme.LightBg
+import com.voice0.app.ui.theme.LightOutline
+import com.voice0.app.ui.theme.LightSurface
+import com.voice0.app.ui.theme.LightTextMuted
+import com.voice0.app.ui.theme.LightTextPrimary
+import com.voice0.app.ui.theme.LightTextSecondary
 import com.voice0.app.ui.theme.Success
-import com.voice0.app.ui.theme.SuccessDeep
-import com.voice0.app.ui.theme.Surface
-import com.voice0.app.ui.theme.SurfaceLow
 import com.voice0.app.ui.theme.TextMuted
 import com.voice0.app.ui.theme.TextPrimary
-import com.voice0.app.ui.theme.TextSecondary
 import com.voice0.app.viewmodel.HomeViewModel
 
 @Composable
@@ -52,80 +50,63 @@ fun SuccessScreen(state: HomeViewModel.UiState, onNew: () -> Unit) {
     val bundle = state.bundle
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Bg)
-            .systemBarsPadding()
-            .padding(28.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize().background(LightBg).systemBarsPadding(),
     ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(SuccessDeep)
-                .border(1.5.dp, Success.copy(alpha = 0.5f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("✓", color = Success, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        }
-
-        Box(Modifier.size(24.dp))
-
-        Text(
-            "Transaction sent",
-            color = TextPrimary,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.5).sp,
-        )
-
-        Box(Modifier.size(6.dp))
-
-        Text(
-            bundle?.steps?.joinToString(" · ") { it.humanSummary } ?: "",
-            color = TextMuted,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
-        )
-
-        Box(Modifier.size(32.dp))
-
-        if (state.signatures.isNotEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    "Signatures",
-                    color = TextMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.sp,
-                )
-                state.signatures.forEach { sig ->
-                    SigCard(sig, state.cluster, ctx)
-                }
-            }
-            Box(Modifier.size(28.dp))
-        }
-
-        Text(
-            "New Intent",
-            color = Color.White,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
+        // Dark top
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Accent)
-                .clickable { onNew() }
-                .padding(vertical = 15.dp),
-        )
+                .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                .background(Bg)
+                .padding(horizontal = 32.dp, vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                Modifier.size(72.dp).clip(CircleShape).background(Success.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("✓", color = Success, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(20.dp))
+            Text("Transaction sent", color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                bundle?.steps?.joinToString(" · ") { it.humanSummary } ?: "",
+                color = TextMuted, fontSize = 14.sp, textAlign = TextAlign.Center, lineHeight = 20.sp,
+            )
+        }
+
+        // Light bottom with signatures
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+        ) {
+            if (state.signatures.isNotEmpty()) {
+                Spacer(Modifier.height(24.dp))
+                Text("Signatures", color = LightTextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                state.signatures.forEach { sig ->
+                    SigCard(sig, state.cluster, ctx)
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // Bottom button
+        Box(
+            modifier = Modifier.fillMaxWidth().background(LightSurface).padding(horizontal = 20.dp, vertical = 14.dp),
+        ) {
+            Text(
+                "New Intent", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black)
+                    .clickable { onNew() }
+                    .padding(vertical = 16.dp),
+            )
+        }
     }
 }
 
@@ -135,39 +116,21 @@ private fun SigCard(sig: String, cluster: Cluster, ctx: android.content.Context)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceLow)
-            .border(1.dp, Outline, RoundedCornerShape(12.dp))
-            .padding(14.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(LightSurface)
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            short,
-            color = TextSecondary.copy(alpha = 0.7f),
-            fontSize = 11.sp,
-            fontFamily = FontFamily.Monospace,
-            letterSpacing = 0.3.sp,
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(OutlineLow),
-        )
+        Text(short, color = LightTextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(LightOutline))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChipBtn("Copy") {
-                val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                    as android.content.ClipboardManager
+                val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 cm.setPrimaryClip(android.content.ClipData.newPlainText("signature", sig))
             }
             ChipBtn("View on Solscan ↗") {
-                val url = if (cluster == Cluster.Devnet)
-                    "https://solscan.io/tx/$sig?cluster=devnet"
-                else
-                    "https://solscan.io/tx/$sig"
-                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
+                val url = if (cluster == Cluster.Devnet) "https://solscan.io/tx/$sig?cluster=devnet" else "https://solscan.io/tx/$sig"
+                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
             }
         }
     }
@@ -176,15 +139,11 @@ private fun SigCard(sig: String, cluster: Cluster, ctx: android.content.Context)
 @Composable
 private fun ChipBtn(label: String, onClick: () -> Unit) {
     Text(
-        label,
-        color = AccentLight,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Medium,
+        label, color = LightTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Surface)
-            .border(1.dp, Outline, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
+            .background(LightBg)
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
     )
 }

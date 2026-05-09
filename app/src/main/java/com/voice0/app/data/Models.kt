@@ -55,7 +55,7 @@ data class SolanaTxBundle(
 
 enum class AppPhase {
     IDLE, RECORDING, TRANSCRIBING, PARSING, SIMULATING,
-    REVIEWING, EXECUTING, DONE, BALANCE_RESULT, ERROR,
+    REVIEWING, EXECUTING, DONE, BALANCE_RESULT, ERROR, HISTORY,
 }
 
 data class AppError(val phase: AppPhase, val message: String)

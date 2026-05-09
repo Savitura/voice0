@@ -28,17 +28,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.voice0.app.data.AppPhase
-import com.voice0.app.ui.theme.Accent
-import com.voice0.app.ui.theme.AccentLight
 import com.voice0.app.ui.theme.Outline
 import com.voice0.app.ui.theme.Recording
-import com.voice0.app.ui.theme.RecordingDeep
 import com.voice0.app.ui.theme.Surface
 import com.voice0.app.ui.theme.SurfaceHigh
 import com.voice0.app.ui.theme.TextMuted
+import com.voice0.app.ui.theme.TextSecondary
 
 @Composable
 fun VoiceButton(
@@ -52,7 +52,7 @@ fun VoiceButton(
     val pressable = phase == AppPhase.IDLE || isRecording
 
     val buttonScale by animateFloatAsState(
-        targetValue = if (isRecording) 1.05f else 1f,
+        targetValue = if (isRecording) 1.08f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium,
@@ -62,63 +62,40 @@ fun VoiceButton(
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulse1 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "pulse1",
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1600, easing = LinearEasing), RepeatMode.Restart),
+        label = "p1",
     )
     val pulse2 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
+        initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-            initialStartOffset = StartOffset(800),
+            tween(1600, easing = LinearEasing), RepeatMode.Restart, initialStartOffset = StartOffset(800),
         ),
-        label = "pulse2",
+        label = "p2",
     )
 
-    Box(
-        modifier = modifier.size(180.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Expanding rings when recording — solid color, no glow
-        if (isRecording) {
-            Canvas(modifier = Modifier.size(180.dp)) {
-                val base = size.minDimension / 2f * 0.778f
-                drawCircle(
-                    color = Recording,
-                    radius = base * (1f + pulse1 * 0.70f),
-                    alpha = (1f - pulse1) * 0.30f,
-                )
-                drawCircle(
-                    color = Recording,
-                    radius = base * (1f + pulse2 * 0.70f),
-                    alpha = (1f - pulse2) * 0.30f,
-                )
+    Box(modifier = modifier.size(140.dp), contentAlignment = Alignment.Center) {
+        // Pulse rings
+        Canvas(Modifier.size(140.dp)) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val base = size.minDimension / 2f * 0.72f
+            if (isRecording) {
+                drawCircle(Recording, base * (1f + pulse1 * 0.6f), center, alpha = (1f - pulse1) * 0.25f)
+                drawCircle(Recording, base * (1f + pulse2 * 0.6f), center, alpha = (1f - pulse2) * 0.25f)
             }
         }
 
         Box(
             modifier = Modifier
-                .size(140.dp)
+                .size(100.dp)
                 .scale(buttonScale)
                 .clip(CircleShape)
-                .background(
-                    when {
-                        isRecording -> RecordingDeep
-                        isBusy -> SurfaceHigh
-                        else -> Surface
-                    }
-                )
+                .background(if (isRecording) Recording.copy(alpha = 0.1f) else Surface)
                 .border(
-                    width = if (isRecording) 1.5.dp else 1.dp,
+                    width = 1.dp,
                     color = when {
-                        isRecording -> Recording.copy(alpha = 0.6f)
-                        isBusy -> Accent.copy(alpha = 0.4f)
+                        isRecording -> Recording.copy(alpha = 0.5f)
+                        isBusy -> TextMuted.copy(alpha = 0.3f)
                         else -> Outline
                     },
                     shape = CircleShape,
@@ -128,11 +105,7 @@ fun VoiceButton(
                     detectTapGestures(
                         onPress = {
                             onPressIn()
-                            try {
-                                tryAwaitRelease()
-                            } finally {
-                                onPressOut()
-                            }
+                            try { tryAwaitRelease() } finally { onPressOut() }
                         },
                     )
                 },
@@ -140,22 +113,18 @@ fun VoiceButton(
         ) {
             when {
                 isBusy -> CircularProgressIndicator(
-                    color = AccentLight,
+                    color = TextSecondary,
                     trackColor = Outline,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(28.dp),
                     strokeWidth = 2.dp,
                 )
                 isRecording -> Icon(
-                    imageVector = Icons.Filled.Mic,
-                    contentDescription = "Recording",
-                    tint = Recording,
-                    modifier = Modifier.size(48.dp),
+                    Icons.Filled.Mic, "Recording",
+                    tint = Recording, modifier = Modifier.size(36.dp),
                 )
                 else -> Icon(
-                    imageVector = Icons.Filled.MicOff,
-                    contentDescription = "Hold to speak",
-                    tint = TextMuted,
-                    modifier = Modifier.size(44.dp),
+                    Icons.Filled.MicOff, "Hold to speak",
+                    tint = TextMuted, modifier = Modifier.size(32.dp),
                 )
             }
         }

@@ -1,14 +1,13 @@
 package com.voice0.app.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-private val Voice0DarkScheme = darkColorScheme(
+private val Voice0Scheme = darkColorScheme(
     primary = Accent,
-    onPrimary = TextPrimary,
-    secondary = AccentLight,
+    onPrimary = Bg,
+    secondary = AccentMuted,
     background = Bg,
     onBackground = TextPrimary,
     surface = Surface,
@@ -20,12 +19,9 @@ private val Voice0DarkScheme = darkColorScheme(
 )
 
 @Composable
-fun Voice0Theme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun Voice0Theme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = Voice0DarkScheme,  // dark always — matches voice0 design
+        colorScheme = Voice0Scheme,
         typography = Voice0Typography,
         content = content,
     )
