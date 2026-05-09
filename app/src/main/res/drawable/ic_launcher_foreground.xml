@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive-icon foreground for voice0.
+    Viewport is 108x108. Adaptive masks may clip outer 18dp on each side, so
+    everything sits within the inner 72x72 safe zone (x=18..90, y=18..90).
+    A simple microphone glyph in voice0's signature sky blue.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Microphone capsule -->
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M54,30
+                          C49.0294,30 45,34.0294 45,39
+                          V55
+                          C45,59.9706 49.0294,64 54,64
+                          C58.9706,64 63,59.9706 63,55
+                          V39
+                          C63,34.0294 58.9706,30 54,30
+                          Z" />
+
+    <!-- U-shaped mic cradle (the curve that sits below the capsule) -->
+    <path
+        android:strokeColor="#0EA5E9"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M38,53
+                          C38,61.8366 45.1634,69 54,69
+                          C62.8366,69 70,61.8366 70,53" />
+
+    <!-- Stand pole connecting the cradle to the base -->
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M52.25,69 h3.5 v8 h-3.5 z" />
+
+    <!-- Stand base -->
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M42,77
+                          h24
+                          a1.5,1.5 0 0 1 1.5,1.5
+                          v0
+                          a1.5,1.5 0 0 1 -1.5,1.5
+                          h-24
+                          a1.5,1.5 0 0 1 -1.5,-1.5
+                          v0
+                          a1.5,1.5 0 0 1 1.5,-1.5
+                          z" />
+</vector>
