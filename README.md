@@ -1,228 +1,181 @@
 # voice0
 
-Voice-controlled DeFi on Solana. Speak a command, review the transaction, sign it — all from your phone.
+Voice-controlled DeFi on Solana — native Android app built with Jetpack Compose and the Solana Mobile Stack. Speak a command, review the transaction, sign it.
 
-voice0 lets you interact with the Solana blockchain using natural language. Say "swap 50 USDC for SOL" or "send 2 SOL to [address]" and the app parses your intent, builds the transaction, simulates it, and sends it to your mobile wallet for signing.
-
----
-
-## Features
-
-- Press-and-hold voice recording with real-time state feedback
-- Speech-to-text via ElevenLabs
-- Intent parsing via Claude (Anthropic) — understands swap, transfer, and multi-step commands
-- Jupiter DEX integration for token swaps with live quotes
-- Transaction simulation on Solana RPC before signing (fees, warnings, pass/fail)
-- Full transaction review panel — inspect each step, estimated fees, and warnings before confirming
-- Mobile Wallet Adapter for secure signing (Android)
-- Mainnet / Devnet toggle
-- Live token balances and USD prices
+> "swap 50 USDC for SOL" → press-hold mic → review screen → wallet pops up → done.
 
 ---
 
-## Tech Stack
+## Stack
 
-| Layer | Technology |
+| Layer | Choice |
 |---|---|
-| Framework | Expo 54 + React Native 0.81.5 |
-| Routing | Expo Router 6 (file-based) |
-| Styling | NativeWind 4 (Tailwind CSS) |
-| Language | TypeScript 5.9 |
-| Intent parsing | Anthropic Claude (`@anthropic-ai/sdk`) |
-| Speech-to-text | ElevenLabs |
-| Blockchain | Solana (`@solana/web3.js`) |
-| RPC | Helius |
-| DEX | Jupiter Aggregator |
-| Token ops | `@solana/spl-token` |
-| Wallet | Mobile Wallet Adapter (Android) |
-| Validation | Zod |
-
----
-
-## How It Works
-
-```
-[Hold button] → record audio
-      ↓
-[Release]     → ElevenLabs transcribes speech to text
-      ↓
-POST /api/parse-intent  → Claude parses text into a SolanaTxBundle
-      ↓
-POST /api/simulate      → server builds txs (Jupiter quotes for swaps,
-                          transfer instructions), simulates on RPC,
-                          estimates fees
-      ↓
-[Review panel]          → user inspects steps, warnings, fees
-      ↓
-[Confirm]               → Mobile Wallet Adapter opens wallet for signing
-      ↓
-[Done]                  → transaction signatures displayed
-```
-
-App phases: `idle` → `recording` → `transcribing` → `parsing` → `simulating` → `reviewing` → `executing` → `done` (or `error` at any step).
+| UI | Jetpack Compose + Material 3 |
+| Language | Kotlin 2.0 |
+| Architecture | MVVM (`AndroidViewModel` + `StateFlow`) |
+| Wallet | Mobile Wallet Adapter (`com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.3`) |
+| Solana primitives | `com.solanamobile:web3-solana`, `rpc-core`, `multimult` |
+| Intent parsing | Anthropic Claude (direct from device) |
+| STT | ElevenLabs (direct from device) |
+| Swap routing | Jupiter v6 |
+| RPC | Helius (mainnet & devnet) |
+| HTTP | Ktor + OkHttp engine |
+| Serialization | kotlinx.serialization |
+| Build | Gradle Kotlin DSL + version catalog |
 
 ---
 
 ## Prerequisites
 
-- Node.js 18+
-- Expo CLI (`npm install -g expo-cli`) or `npx expo`
-- Android device or emulator (required for wallet signing via Mobile Wallet Adapter)
-- API keys: Anthropic, ElevenLabs, Helius
+- Android Studio Ladybug (2024.2+) or newer
+- JDK 17 (bundled with recent Android Studio)
+- An Android device/emulator running API 26+ (Android 8.0)
+- An MWA-compatible wallet installed on the device (Phantom, Solflare, Backpack)
+- API keys for: Anthropic, ElevenLabs, Helius
 
 ---
 
-## Getting Started
+## Getting started
 
-```bash
-# 1. Clone the repo
-git clone <repo-url>
-cd voice0
+```powershell
+# 1. Open the project in Android Studio
+#    (File → Open → select this directory)
+#    Android Studio will run `gradle wrapper` and download the Gradle distribution.
 
-# 2. Install dependencies
-npm install
+# 2. Copy the local-properties template and fill in your keys
+Copy-Item local.properties.example local.properties
+# then edit local.properties
 
-# 3. Set up environment variables
-cp .env.example .env
-# Fill in your API keys — see Environment Variables section below
+# 3. Sync Gradle (Android Studio prompts on import; or `./gradlew assembleDebug`)
+# 4. Run on a connected device with an MWA-compatible wallet installed.
+```
 
-# 4. Start the dev server
-npm start
+If Android Studio doesn't auto-generate `gradlew`/`gradlew.bat`, run once:
 
-# Or target a specific platform
-npm run android   # Android emulator / device
-npm run ios       # iOS simulator
-npm run web       # Browser (wallet signing not available on web)
+```powershell
+gradle wrapper --gradle-version 8.10.2
 ```
 
 ---
 
-## Environment Variables
+## ⚠ Security
 
-| Variable | Side | Required | Description |
-|---|---|---|---|
-| `ANTHROPIC_API_KEY` | Server | Yes | Claude API key for intent parsing |
-| `HELIUS_RPC_URL` | Server | Yes | Helius mainnet RPC endpoint |
-| `HELIUS_DEVNET_RPC_URL` | Server | Yes | Helius devnet RPC endpoint |
-| `EXPO_PUBLIC_ELEVENLABS_API_KEY` | Client | Yes | ElevenLabs speech-to-text API key |
-| `EXPO_PUBLIC_APP_NAME` | Client | No | App display name (default: `voice0`) |
-| `EXPO_PUBLIC_BASE_URL` | Client | No | API base URL override for production deployments |
+We chose **pure-native** mode: API keys live in `local.properties` and are baked into `BuildConfig` at compile time. **Anyone who downloads a release APK can extract these keys.** This is acceptable for a hackathon / personal build, **not for production**.
 
-> Variables without the `EXPO_PUBLIC_` prefix are server-side only and are never exposed to the client bundle.
+When you're ready to ship publicly:
+
+1. Move ElevenLabs, Anthropic, and Helius calls behind a small backend (Cloudflare Worker / Ktor server).
+2. Add a per-device shared-secret + per-IP rate-limit on that backend.
+3. Update `network/*Client.kt` to call your backend instead of the third-party APIs.
+
+The `TxAsserter` (`solana/TxAsserter.kt`) is your defense-in-depth: every transaction is rebuilt and decoded just before signing, and the destination/amount are checked against the displayed parameters. Even if a network response were tampered with, mismatched bytes throw before reaching the wallet.
 
 ---
 
-## Supported Tokens
+## Project layout
 
-| Symbol | Network | Decimals |
+```
+voice0/
+├── settings.gradle.kts
+├── build.gradle.kts                 # root, plugin declarations only
+├── gradle/libs.versions.toml        # version catalog
+├── gradle.properties
+├── local.properties.example         # → copy to local.properties
+└── app/
+    ├── build.gradle.kts             # AGP, deps, BuildConfig from local.properties
+    ├── proguard-rules.pro
+    └── src/main/
+        ├── AndroidManifest.xml      # mic + internet perms, MWA <queries>
+        ├── res/                     # theme, colors, launcher icon, backup rules
+        └── java/com/voice0/app/
+            ├── MainActivity.kt              # ActivityResultSender + Compose host
+            ├── Voice0Application.kt
+            ├── data/                        # Cluster, Tokens, Amount, Models, Phase
+            ├── network/                     # Ktor clients (Anthropic, ElevenLabs, Jupiter, Helius RPC, prices)
+            ├── parser/IntentParser.kt       # Claude → SolanaTxBundle, with validation
+            ├── solana/
+            │   ├── TxBuilder.kt             # Native + SPL transfers; Jupiter swap delegation
+            │   ├── TxAsserter.kt            # decodes tx and asserts destination/amount/payer
+            │   ├── Simulator.kt             # build → simulate → annotate fee/price-impact
+            │   └── Balances.kt              # SOL + SPL balance fetch + format
+            ├── audio/AudioRecorder.kt       # MediaRecorder wrapper, m4a output
+            ├── wallet/WalletManager.kt      # MWA + EncryptedSharedPreferences for auth_token
+            ├── viewmodel/HomeViewModel.kt   # state machine, coroutines, pipeline orchestration
+            └── ui/
+                ├── HomeScreen.kt            # phase router
+                ├── ReviewScreen.kt          # step list + sim result + footer
+                ├── ExecutionScreen.kt
+                ├── SuccessScreen.kt
+                ├── components/
+                │   ├── VoiceButton.kt
+                │   ├── StepCard.kt
+                │   ├── BalanceStrip.kt
+                │   └── NetworkToggle.kt
+                └── theme/{Color,Type,Theme}.kt
+```
+
+---
+
+## How it works
+
+```
+[Hold mic]      → MediaRecorder writes m4a to cache dir
+[Release]       → ElevenLabsClient.transcribe() returns text
+                  → IntentParser calls Claude with <user_intent>…</user_intent> wrapping
+                  → Zod-style validation: pubkey check, slippage clamp, drop unsupported steps
+[Connect wallet] → MWA authorize() / reauthorize() (cached in EncryptedSharedPreferences)
+[Simulate]      → for each step: TxBuilder.buildTransfer/buildSwap → HeliusRpc.simulateTransaction
+                  → annotate step with feeLamports, priceImpactPct, requiresExtraConfirm
+[Review]        → user sees per-step cards, fee, warnings, high-impact ack checkbox
+[Confirm]       → REBUILD txs from validated params (don't trust simulator bytes)
+                  → TxAsserter.assertTransfer / assertSwap (payer + destination + amount checks)
+                  → MWA.signAndSendTransactions
+[Done]          → signatures shown, Solscan links, balances refreshed
+```
+
+App phases: `IDLE → RECORDING → TRANSCRIBING → PARSING → SIMULATING → REVIEWING → EXECUTING → DONE` (or `ERROR` at any step).
+
+---
+
+## Supported tokens
+
+| Symbol | Mint | Decimals |
 |---|---|---|
-| SOL | Native | 9 |
+| SOL | native | 9 |
 | USDC | EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v | 6 |
 | USDT | Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB | 6 |
 | BONK | DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263 | 5 |
 | JUP | JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN | 6 |
 
----
-
-## Project Structure
-
-```
-voice0/
-├── app/
-│   ├── (tabs)/
-│   │   ├── index.tsx          # Main screen — voice input, state machine, tx flow
-│   │   └── explore.tsx
-│   ├── api/
-│   │   ├── parse-intent+api.ts  # POST: Claude intent parsing
-│   │   └── simulate+api.ts      # POST: tx building & simulation
-│   └── _layout.tsx
-├── lib/
-│   ├── types.ts               # SolanaTxBundle, SolanaTxStep, params types
-│   ├── wallet.ts              # Mobile Wallet Adapter
-│   ├── elevenlabs.ts          # Audio recording + STT
-│   ├── solana.ts              # RPC connection + tx simulation
-│   ├── jupiter.ts             # DEX quotes + swap tx building
-│   ├── tokens.ts              # Token metadata registry
-│   ├── balances.ts            # Token balance fetching
-│   ├── prices.ts              # Token price fetching
-│   └── network.ts             # Cluster management (mainnet/devnet)
-├── components/
-│   ├── VoiceButton.tsx        # Press-and-hold recording button
-│   ├── TxReviewPanel.tsx      # Transaction review UI
-│   ├── StepCard.tsx           # Individual step display
-│   ├── BalanceStrip.tsx       # Token balance bar
-│   └── NetworkToggle.tsx      # Mainnet / Devnet switcher
-├── .env.example
-└── package.json
-```
+Adding a new token: edit `data/Tokens.kt`. The rest of the pipeline (balance fetch, price fetch, swap routing) picks it up automatically. Decimals for unmapped mints are fetched on-chain via `HeliusRpc.getMintDecimals`.
 
 ---
 
-## Contributing
+## Testing
 
-### Development workflow
-
-```bash
-# Fork the repo, then clone your fork
-git clone https://github.com/<your-username>/voice0.git
-cd voice0
-npm install
-cp .env.example .env   # fill in your keys
+```powershell
+./gradlew test                    # unit tests (Amount, Tokens, Balances format)
+./gradlew connectedAndroidTest    # instrumented tests (none yet)
 ```
 
-Create a branch for your change:
-
-```bash
-git checkout -b feat/my-feature
-```
-
-Run the linter before pushing:
-
-```bash
-npm run lint
-```
-
-Open a pull request against `main`.
-
-### Using devnet
-
-Switch the in-app network toggle to **Devnet** to avoid spending real SOL while developing. Make sure `HELIUS_DEVNET_RPC_URL` is set in your `.env`. You can airdrop devnet SOL via the Solana CLI:
-
-```bash
-solana airdrop 2 <your-wallet-address> --url devnet
-```
-
-### Skipping ElevenLabs during development
-
-If you don't have an ElevenLabs key, you can bypass STT by temporarily hardcoding a transcript string in `lib/elevenlabs.ts` and returning it directly instead of making the API call. This lets you work on intent parsing and the transaction flow without needing audio.
-
-### Adding a new token
-
-Token metadata lives in [`lib/tokens.ts`](lib/tokens.ts). Add an entry to the `TOKENS` map with the mint address, symbol, decimals, and display name. The rest of the pipeline (balance fetching, price fetching, Jupiter routing) picks it up automatically.
-
-### Adding a new intent type
-
-1. Add the new step type to `SolanaTxStep["type"]` in [`lib/types.ts`](lib/types.ts) and define its `params` shape.
-2. Update the Claude system prompt in [`app/api/parse-intent+api.ts`](app/api/parse-intent+api.ts) to recognize and emit the new type.
-3. Handle building and simulating the transaction in [`app/api/simulate+api.ts`](app/api/simulate+api.ts).
-4. Update [`components/StepCard.tsx`](components/StepCard.tsx) to render the new step type in the review panel.
-
-### Key areas to know
-
-| Area | Files |
-|---|---|
-| State machine & main UI | `app/(tabs)/index.tsx` |
-| Intent parsing prompt | `app/api/parse-intent+api.ts` |
-| Tx building & simulation | `app/api/simulate+api.ts` |
-| Shared types | `lib/types.ts` |
-| Jupiter swap logic | `lib/jupiter.ts` |
-| Wallet adapter | `lib/wallet.ts` |
+Unit tests are in `app/src/test/java/com/voice0/app/`. Add tests for `TxAsserter` golden cases (build a known transfer, mutate a byte, assert it throws) before shipping.
 
 ---
 
-## Known Limitations
+## Known caveats
 
-- **Wallet signing is Android-only.** Mobile Wallet Adapter does not support iOS or web. You can browse and simulate on any platform, but signing requires an Android device or emulator with a compatible wallet installed (e.g., Phantom).
-- **Five tokens supported.** The token registry is hardcoded. Arbitrary token addresses are not yet supported.
-- **No bridge support.** Multi-chain bridge steps are parsed but skipped with a warning.
-- **ElevenLabs STT runs client-side.** The API key is exposed in the client bundle. This is acceptable for development; proxy the request server-side before shipping to production.
+- **API surface drift**: the MWA Kotlin client (`mobile-wallet-adapter-clientlib-ktx`) and `web3-solana` libraries are still pre-1.0. If 2.0.3 ships method renames vs. what's in `WalletManager.kt` / `TxBuilder.kt`, the fix is a one-line rename per call site — the structure stays the same. See https://docs.solanamobile.com/get-started/kotlin/installation .
+- **Devnet airdrop**: switch the in-app toggle to Devnet, then from a terminal: `solana airdrop 2 <wallet-address> --url devnet`.
+- **MediaRecorder min press**: a press shorter than ~200ms produces an empty file and ElevenLabs returns 400. The app surfaces the error; the user retries.
+- **Blockhash expiry**: txs are rebuilt at confirm time, so a stale blockhash is rare. If the wallet rejects with `BlockhashNotFound`, tap Cancel and re-confirm — that re-fetches.
+- **iOS**: not supported. MWA is Android-only by design.
+
+---
+
+## Roadmap
+
+- DataStore-backed recents (last N voice intents)
+- Editable per-step params on the review screen (amount/slippage/destination without re-parsing)
+- Pre-flight balance check ("insufficient X")
+- Compose UI tests for the review screen
+- Move secrets behind a backend

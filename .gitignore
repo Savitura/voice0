@@ -1,47 +1,59 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
 
-# dependencies
-node_modules/
+# Files for the ART/Dalvik VM
+*.dex
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
+# Java class files
+*.class
 
-# Native
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+captures/
+.cxx/
+
+# Kotlin
 .kotlin/
-*.orig.*
+
+# Keystores
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Tests
+test-results/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Legacy (from previous Expo project — safe to delete)
 .env
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
-
-
+.env.example
 .claude/

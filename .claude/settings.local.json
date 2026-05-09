@@ -3,8 +3,9 @@
     "allow": [
       "Bash(pnpm add *)",
       "Bash(pnpm remove *)",
-      "Bash(xargs cat *)",
-      "Bash(pnpm expo *)"
+      "Bash(pnpm exec *)",
+      "Bash(dir \"%LOCALAPPDATA%\\\\Android\\\\Sdk\" /b)",
+      "Bash(./gradlew assembleDebug --no-daemon)"
     ]
   }
 }
