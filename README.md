@@ -58,20 +58,6 @@ gradle wrapper --gradle-version 8.10.2
 
 ---
 
-## ⚠ Security
-
-We chose **pure-native** mode: API keys live in `local.properties` and are baked into `BuildConfig` at compile time. **Anyone who downloads a release APK can extract these keys.** This is acceptable for a hackathon / personal build, **not for production**.
-
-When you're ready to ship publicly:
-
-1. Move ElevenLabs, Anthropic, and Helius calls behind a small backend (Cloudflare Worker / Ktor server).
-2. Add a per-device shared-secret + per-IP rate-limit on that backend.
-3. Update `network/*Client.kt` to call your backend instead of the third-party APIs.
-
-The `TxAsserter` (`solana/TxAsserter.kt`) is your defense-in-depth: every transaction is rebuilt and decoded just before signing, and the destination/amount are checked against the displayed parameters. Even if a network response were tampered with, mismatched bytes throw before reaching the wallet.
-
----
-
 ## Project layout
 
 ```
@@ -155,10 +141,10 @@ Adding a new token: edit `data/Tokens.kt`. The rest of the pipeline (balance fet
 
 ```powershell
 ./gradlew test                    # unit tests (Amount, Tokens, Balances format)
-./gradlew connectedAndroidTest    # instrumented tests (none yet)
+./gradlew connectedAndroidTest    # instrumented tests
 ```
 
-Unit tests are in `app/src/test/java/com/voice0/app/`. Add tests for `TxAsserter` golden cases (build a known transfer, mutate a byte, assert it throws) before shipping.
+Unit tests are in `app/src/test/java/com/voice0/app/`.
 
 ---
 
@@ -178,4 +164,3 @@ Unit tests are in `app/src/test/java/com/voice0/app/`. Add tests for `TxAsserter
 - Editable per-step params on the review screen (amount/slippage/destination without re-parsing)
 - Pre-flight balance check ("insufficient X")
 - Compose UI tests for the review screen
-- Move secrets behind a backend
