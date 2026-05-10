@@ -76,7 +76,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun rpc() = HeliusRpc(_state.value.cluster)
-    private fun txBuilder() = TxBuilder(rpc())
+    private fun txBuilder() = TxBuilder(rpc(), _state.value.cluster)
 
     fun setCluster(c: Cluster) {
         if (_state.value.phase != AppPhase.IDLE && _state.value.phase != AppPhase.REVIEWING &&

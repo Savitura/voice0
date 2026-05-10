@@ -8,6 +8,7 @@ import com.solana.transaction.Message
 import com.solana.transaction.Transaction
 import com.solana.transaction.TransactionInstruction
 import com.voice0.app.data.Amount
+import com.voice0.app.data.Cluster
 import com.voice0.app.data.SwapParams
 import com.voice0.app.data.Tokens
 import com.voice0.app.data.TransferParams
@@ -17,7 +18,6 @@ import com.voice0.app.network.JupiterQuote
 import com.funkatronics.encoders.Base58
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.encodeToJsonElement
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -33,6 +33,7 @@ import java.nio.ByteOrder
  */
 class TxBuilder(
     private val rpc: HeliusRpc,
+    private val cluster: Cluster = Cluster.Mainnet,
     private val jsonFmt: Json = Json { ignoreUnknownKeys = true },
 ) {
 
@@ -78,16 +79,31 @@ class TxBuilder(
         params: SwapParams,
         payer: SolanaPublicKey,
     ): Pair<String, JupiterQuote> {
+        if (cluster == Cluster.Devnet) {
+            error("Swaps are only available on mainnet — Jupiter does not support devnet. Switch to mainnet to swap tokens.")
+        }
+
         val decimals = when {
             params.inputMint == "native" -> 9
             else -> Tokens.byMint(params.inputMint)?.decimals ?: rpc.getMintDecimals(params.inputMint)
         }
-        val amountBase = Amount.toBaseUnits(params.amount, decimals).toString()
+        val amountLamports = Amount.toBaseUnits(params.amount, decimals).toLong()
+
+        // Pre-flight balance check — surface a clear error before hitting Jupiter.
+        if (params.inputMint == "native") {
+            val balanceLamports = rpc.getBalanceLamports(payer.base58())
+            val needed = amountLamports + 10_000L // small fee buffer
+            if (balanceLamports < needed) {
+                val have = "%.4f".format(balanceLamports / 1_000_000_000.0)
+                val need = "%.4f".format(needed / 1_000_000_000.0)
+                error("Insufficient SOL: you have $have SOL but this swap needs $need SOL (including fees).")
+            }
+        }
 
         val (rawQuote, quote) = JupiterClient.quote(
             inputMint = jupiterMint(params.inputMint),
             outputMint = jupiterMint(params.outputMint),
-            amountBaseUnits = amountBase,
+            amountBaseUnits = amountLamports.toString(),
             slippageBps = params.slippageBps,
         )
         val txBase64 = JupiterClient.buildSwapTx(rawQuote, payer.base58())
